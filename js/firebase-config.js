@@ -2,16 +2,15 @@
 // استبدل القيم التالية بقيم مشروع Firebase لديك
 // يمكنك الحصول على هذه القيم من Firebase Console > Project Settings
 
-// Example (fill with your actual config):
-// const firebaseConfig = {
-//   apiKey: "API_KEY",
-//   authDomain: "PROJECT.firebaseapp.com",
-//   databaseURL: "https://PROJECT.firebaseio.com",
-//   projectId: "PROJECT_ID",
-//   storageBucket: "PROJECT.appspot.com",
-//   messagingSenderId: "SENDER_ID",
-//   appId: "APP_ID"
-// };
+ const firebaseConfig = {
+    apiKey: "AIzaSyAFWC6YJzFi9B-XQbWQejEQOwuiL2G3PC4",
+    authDomain: "queue2-5c4eb.firebaseapp.com",
+    projectId: "queue2-5c4eb",
+    storageBucket: "queue2-5c4eb.firebasestorage.app",
+    messagingSenderId: "15303249058",
+    appId: "1:15303249058:web:5aa93bf30cf62d6f015bfb",
+    measurementId: "G-ZQF0DJH06Q"
+  };
 
 if (!window.firebase) {
   console.error("Firebase SDK غير محمّل. تأكد من إضافة سكربت Firebase في HTML.");
