@@ -1,6 +1,6 @@
 // js/display.js
 (async function(){
-  if (!window.db) { console.error("Firebase DB غير مهيأ."); return; }
+  if (!window.db) { console.error("Firebase غير مهيأ"); return; }
 
   const clinicsCards = document.getElementById('clinicsCards');
   const announcementText = document.getElementById('announcementText');
@@ -17,14 +17,9 @@
   let settings = {};
   const player = new AudioPlayerQueue();
 
-  function updateClock(){
-    const d = new Date();
-    clock.textContent = d.toLocaleString();
-  }
-  setInterval(updateClock, 1000);
-  updateClock();
+  function updateClock(){ clock.textContent = new Date().toLocaleString(); }
+  setInterval(updateClock, 1000); updateClock();
 
-  // load clinics and display cards
   async function loadClinics() {
     const snap = await clinicsRef.once('value');
     clinics = snap.val() || {};
@@ -42,16 +37,16 @@
     }
   }
 
-  // monitor settings
   settingsRef.on('value', snap => {
     settings = snap.val() || {};
-    // ticker
     if (settings.tickerText) tickerContent.textContent = settings.tickerText;
-    // audio settings
-    player.setSettings({ playbackRate: settings.playbackRate || 1.0, dingFile: (settings.mediaBaseUrl || '/assets/audio/') + 'base/ding.mp3', mediaBaseUrl: settings.mediaBaseUrl || '/assets/audio/'});
+    player.setSettings({
+      playbackRate: settings.playbackRate || 1.0,
+      dingFile: (settings.mediaBaseUrl || '/assets/audio/') + 'base/ding.mp3',
+      mediaBaseUrl: settings.mediaBaseUrl || '/assets/audio/'
+    });
   });
 
-  // when clinics update (e.g., numbers change), update card numbers
   clinicsRef.on('value', snap => {
     clinics = snap.val() || {};
     for (const id of Object.keys(clinics)) {
@@ -60,17 +55,13 @@
     }
   });
 
-  // helper: flash card
   function flashCard(clinicId, flashMs) {
     const el = document.getElementById('card_' + clinicId);
     if (!el) return;
     el.classList.add('ring-4','ring-yellow-400');
-    setTimeout(()=> {
-      el.classList.remove('ring-4','ring-yellow-400');
-    }, flashMs || 5000);
+    setTimeout(()=> el.classList.remove('ring-4','ring-yellow-400'), flashMs || 5000);
   }
 
-  // when lastCall changes -> display + play
   db.ref('lastCall').on('value', async snap => {
     const v = snap.val();
     if (!v) return;
@@ -78,52 +69,38 @@
     const number = v.number;
     const timestamp = v.timestamp || Date.now();
     const d = new Date(timestamp);
-    // update announcement text on top
     const clinicName = (clinics[clinicId] && clinics[clinicId].name) ? clinics[clinicId].name : clinicId;
     announcementText.textContent = `على العميل رقم ${number} التوجه إلى ${clinicName}`;
-    announcementMeta.textContent = `${d.toLocaleString()}`;
-
-    // flash the card
+    announcementMeta.textContent = d.toLocaleString();
     const flashMs = (settings.flashDurationMs) || 5000;
     flashCard(clinicId, flashMs);
 
-    // build audio sequence depending on settings.audioMode
     const mode = settings.audioMode || 'mp3';
     if (mode === 'tts') {
-      // use Web Speech API
       if (window.speechSynthesis) {
         const s1 = new SpeechSynthesisUtterance(`على العميل رقم ${number}`);
-        s1.lang = 'ar-SA';
-        s1.rate = settings.playbackRate || 1.0;
+        s1.lang='ar-SA'; s1.rate = settings.playbackRate || 1.0;
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(s1);
-        setTimeout(()=>{
+        setTimeout(()=> {
           const s2 = new SpeechSynthesisUtterance(`التوجه إلى ${clinicName}`);
-          s2.lang='ar-SA';
-          s2.rate = settings.playbackRate || 1.0;
+          s2.lang='ar-SA'; s2.rate = settings.playbackRate || 1.0;
           window.speechSynthesis.speak(s2);
         }, 700);
       } else {
-        console.warn("TTS غير متاح على هذا المتصفح.");
+        console.warn("TTS غير متاح في هذا المتصفح");
       }
     } else {
-      // mp3 mode: build sequence from mediaBase and play via player
       const base = settings.mediaBaseUrl || '/assets/audio/';
       const seq = buildAudioSequenceForNumber(number, base);
       seq.push(base + 'base/go_to_clinic.mp3');
       const clinic = clinics[clinicId] || {};
-      if (clinic.audioPromptFile && clinic.useCustomPrompt) {
-        seq.push(clinic.audioPromptFile);
-      } else {
-        // expect file under mediaBase/clinics/{clinicId}_prompt.mp3
-        seq.push(base + `clinics/${clinicId}_prompt.mp3`);
-      }
-      // enqueue
+      if (clinic.audioPromptFile && clinic.useCustomPrompt) seq.push(clinic.audioPromptFile);
+      else seq.push(base + `clinics/${clinicId}_prompt.mp3`);
       player.setSettings({ playbackRate: settings.playbackRate || 1.0, dingFile: base + 'base/ding.mp3' });
       player.enqueue({ files: seq, repeat: settings.callRepeatCount || 1 });
     }
   });
 
-  // init
   await loadClinics();
 })();
