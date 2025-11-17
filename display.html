@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Display - شاشة العرض</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase -->
+
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body class="bg-black text-white h-screen overflow-hidden">
   <div class="h-full grid grid-cols-4 gap-4 p-4">
-    <div class="col-span-1 bg-gray-900 p-3 rounded overflow-auto" id="clinicsColumn">
+    <div class="col-span-1 bg-gray-900 p-3 rounded overflow-auto">
       <h2 class="text-lg font-semibold mb-3">العيادات</h2>
       <div id="clinicsCards" class="space-y-2"></div>
     </div>
@@ -28,7 +28,6 @@
       </div>
 
       <div id="mediaArea" class="flex-1 bg-black/40 rounded flex items-center justify-center overflow-hidden">
-        <!-- فيديو / صورة هنا -->
         <video id="mediaVideo" class="max-h-full max-w-full hidden" controls muted loop></video>
         <img id="mediaImage" class="max-h-full max-w-full object-contain hidden" />
       </div>
@@ -41,7 +40,6 @@
     </div>
   </div>
 
-  <!-- scripts -->
   <script src="js/firebase-config.js"></script>
   <script src="js/audioBuilder.js"></script>
   <script src="js/audioQueue.js"></script>
