@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Control - نظام الطوابير</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body class="bg-white text-gray-900 p-4">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">لوحة التحكم</h1>
+
+    <div class="bg-white p-4 rounded shadow mb-4">
+      <label class="block text-sm">اختر العيادة</label>
+      <select id="clinicSelect" class="p-2 border rounded w-full mb-2"></select>
+
+      <label class="block text-sm">أدخل كلمة سر العيادة</label>
+      <input id="clinicPass" type="password" class="p-2 border rounded w-full mb-3" />
+
+      <div id="controlActions" class="flex gap-2 items-center">
+        <button id="prevBtn" class="px-3 py-2 bg-gray-300 rounded">العميل السابق</button>
+        <button id="nextBtn" class="px-3 py-2 bg-blue-600 text-white rounded">العميل التالي</button>
+        <button id="repeatBtn" class="px-3 py-2 bg-yellow-400 rounded">تكرار النداء</button>
+        <button id="callSpecificBtn" class="px-3 py-2 bg-indigo-600 text-white rounded">نداء رقم معين</button>
+        <input id="specificNumber" type="number" min="1" max="9999" placeholder="رقم" class="p-2 border rounded w-28" />
+        <button id="resetQueue" class="px-3 py-2 bg-red-500 text-white rounded">إعادة تعيين الطابور</button>
+      </div>
+
+      <div class="mt-3">
+        <label class="block text-sm">وضع الصوت المحلي</label>
+        <div class="text-sm text-gray-600">زر "تمكين الصوت" مطلوب على شاشات قد تمنع التشغيل التلقائي (Android TV).</div>
+        <button id="enableAudio" class="px-3 py-2 bg-green-600 text-white rounded mt-2">تمكين الصوت</button>
+      </div>
+
+      <div id="status" class="mt-3 text-sm text-gray-600"></div>
+    </div>
+
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="font-semibold mb-2">تاريخ آخر نداء</h2>
+      <div id="lastCalls" class="text-sm text-gray-700"></div>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/audioBuilder.js"></script>
+  <script src="js/audioQueue.js"></script>
+  <script src="js/control.js"></script>
+</body>
+</html>

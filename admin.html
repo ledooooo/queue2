@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin - نظام طوابير العيادات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase (v8 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 p-4">
+  <div class="max-w-6xl mx-auto">
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">لوحة الادمن — إدارة النظام</h1>
+      <div>
+        <button id="logoutBtn" class="px-3 py-1 bg-red-500 text-white rounded hidden">تسجيل خروج</button>
+      </div>
+    </header>
+
+    <section id="auth-section" class="bg-white p-4 rounded shadow mb-4">
+      <h2 class="font-semibold mb-2">تسجيل دخول الادمن</h2>
+      <p class="text-sm text-gray-600 mb-2">أدخل كلمة المرور الرئيسية (ستُقارن بالهاش الموجود في Firebase).</p>
+      <input id="adminPass" type="password" placeholder="كلمة مرور الادمن" class="p-2 border rounded w-full mb-2" />
+      <button id="adminLogin" class="px-4 py-2 bg-blue-600 text-white rounded">دخول</button>
+      <div id="authMsg" class="mt-2 text-sm text-red-600"></div>
+    </section>
+
+    <section id="admin-ui" class="hidden space-y-6">
+      <!-- General settings -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-semibold mb-3">إعدادات عامة</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm">اسم المركز</label>
+            <input id="centerName" class="p-2 border rounded w-full" />
+          </div>
+          <div>
+            <label class="block text-sm">وضع الصوت</label>
+            <select id="audioMode" class="p-2 border rounded w-full">
+              <option value="mp3">تشغيل من ملفات MP3</option>
+              <option value="tts">Web Speech TTS</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm">سرعة النطق (playbackRate)</label>
+            <input id="playbackRate" type="number" step="0.1" min="0.5" max="2.0" class="p-2 border rounded w-full" />
+          </div>
+          <div>
+            <label class="block text-sm">مدة وميض الكارت (ثواني)</label>
+            <input id="flashDuration" type="number" min="1" max="20" class="p-2 border rounded w-full" />
+          </div>
+          <div>
+            <label class="block text-sm">عدد تكرار النداء</label>
+            <input id="callRepeat" type="number" min="1" max="5" class="p-2 border rounded w-full" />
+          </div>
+          <div>
+            <label class="block text-sm">مسار الميديا الأساسي (mediaBaseUrl)</label>
+            <input id="mediaBaseUrl" class="p-2 border rounded w-full" placeholder="/assets" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <button id="saveSettings" class="px-4 py-2 bg-green-600 text-white rounded">حفظ إعدادات</button>
+        </div>
+      </div>
+
+      <!-- Clinics list -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-semibold mb-3">العيادات (حتى 10)</h2>
+        <div id="clinicsList" class="space-y-2"></div>
+
+        <hr class="my-3" />
+        <div class="grid grid-cols-2 gap-3">
+          <input id="newClinicName" placeholder="اسم عيادة جديدة" class="p-2 border rounded" />
+          <input id="newClinicPass" placeholder="كلمة سر العيادة" type="password" class="p-2 border rounded" />
+        </div>
+        <div class="mt-2 flex gap-2">
+          <button id="addClinic" class="px-4 py-2 bg-blue-600 text-white rounded">إضافة عيادة</button>
+          <button id="uploadClinicPrompt" class="px-4 py-2 bg-gray-600 text-white rounded">رفع/تسجيل نداء (5 ثوانٍ)</button>
+          <input id="clinicPromptFile" type="file" accept="audio/*" class="hidden" />
+        </div>
+      </div>
+
+      <!-- Test audio & TTS -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-semibold mb-3">اختبار النطق</h2>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <input id="testNumber" type="number" min="1" max="9999" placeholder="رقم للاختبار" class="p-2 border rounded w-full" />
+          </div>
+          <div>
+            <select id="testClinicSelect" class="p-2 border rounded w-full"></select>
+          </div>
+          <div>
+            <input id="testRepeat" type="number" value="1" min="1" max="5" class="p-2 border rounded w-full" />
+          </div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button id="playTest" class="px-4 py-2 bg-indigo-600 text-white rounded">تشغيل نداء اختبار</button>
+          <button id="playTTS" class="px-4 py-2 bg-yellow-600 text-black rounded">تشغيل باستخدام TTS</button>
+        </div>
+
+        <div class="mt-3">
+          <label class="block text-sm">تسجيل اسم عميل (حتى 5 ثواني)</label>
+          <input id="recClientName" placeholder="أدخل اسم العميل (نصيًا)" class="p-2 border rounded w-full mb-2" />
+          <div class="flex gap-2">
+            <button id="startRec" class="px-3 py-1 bg-green-500 text-white rounded">ابدأ تسجيل</button>
+            <button id="stopRec" class="px-3 py-1 bg-gray-400 text-black rounded">إيقاف</button>
+            <button id="saveRec" class="px-3 py-1 bg-blue-600 text-white rounded">حفظ التسجيل كملف للعيادة</button>
+            <audio id="recPreview" controls class="hidden"></audio>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-sm text-gray-600 mt-4">
+        <p>ملاحظة: بعد حفظ الإعدادات أو إضافة عيادة، تأكد من تحديث صفحات Control و Display لقراءة الإعدادات الجديدة من Firebase.</p>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/audioBuilder.js"></script>
+  <script src="js/audioQueue.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
