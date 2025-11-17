@@ -11,12 +11,9 @@ class AudioPlayerQueue {
     this.currentAudio = null;
   }
 
-  setSettings(s) {
-    Object.assign(this.settings, s);
-  }
+  setSettings(s) { Object.assign(this.settings, s); }
 
   enqueue(task) {
-    // task: { files: [], repeat: 1, id: optional, callback: fn }
     this.queue.push(task);
     this.process();
   }
@@ -33,10 +30,7 @@ class AudioPlayerQueue {
       }
     }
     this.playing = false;
-    if (task.callback) {
-      try { task.callback(); } catch(e){ console.error(e); }
-    }
-    // next
+    if (task.callback) try { task.callback(); } catch(e){ console.error(e); }
     this.process();
   }
 
@@ -49,11 +43,7 @@ class AudioPlayerQueue {
         this.currentAudio = a;
         a.onended = () => { this.currentAudio = null; resolve(); };
         a.onerror = (e) => { console.error("Audio error", e); this.currentAudio = null; resolve(); };
-        a.play().catch((err) => {
-          console.warn("Playback blocked or failed", err);
-          // try to unlock autoplay by resolving so queue continues
-          resolve();
-        });
+        a.play().catch((err) => { console.warn("Playback blocked or failed", err); resolve(); });
       } catch (e) {
         console.error("playFile exception", e);
         resolve();
@@ -63,10 +53,7 @@ class AudioPlayerQueue {
 
   stop() {
     if (this.currentAudio) {
-      try {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-      } catch(e){}
+      try { this.currentAudio.pause(); this.currentAudio.currentTime = 0; } catch(e){}
       this.currentAudio = null;
     }
     this.queue = [];
