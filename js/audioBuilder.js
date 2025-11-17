@@ -1,6 +1,5 @@
 // js/audioBuilder.js
 function buildAudioSequenceForNumber(number, mediaBaseUrl = "/assets/audio/") {
-  // mediaBaseUrl ends with slash
   const numbersBase = mediaBaseUrl + "numbers/";
   const baseBase = mediaBaseUrl + "base/";
   if (number === 0) return [baseBase + "zero.mp3"];
@@ -55,7 +54,6 @@ function buildAudioSequenceForNumber(number, mediaBaseUrl = "/assets/audio/") {
       }
     }
   }
-
-  // caller should append go_to_clinic + clinic prompt file if desired
   return seq;
 }
+
