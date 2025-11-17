@@ -1,6 +1,6 @@
 // js/control.js
 (async function(){
-  if (!window.db) { console.error("Firebase DB غير مهيأ."); return; }
+  if (!window.db) { console.error("Firebase غير مهيأ"); return; }
 
   const clinicSelect = document.getElementById('clinicSelect');
   const clinicPass = document.getElementById('clinicPass');
@@ -12,16 +12,13 @@
   const resetQueue = document.getElementById('resetQueue');
   const enableAudio = document.getElementById('enableAudio');
   const status = document.getElementById('status');
-  const lastCalls = document.getElementById('lastCalls');
+  const lastCallDiv = document.getElementById('lastCall');
 
   const clinicsRef = db.ref('clinics');
-  const settingsRef = db.ref('settings');
+
   let clinics = {};
 
-  // audio player local
-  const player = new AudioPlayerQueue();
-  let localMediaBase = '/assets/audio/';
-
+  // load clinics
   async function loadClinics() {
     const snap = await clinicsRef.once('value');
     clinics = snap.val() || {};
@@ -34,14 +31,7 @@
     }
   }
 
-  async function loadSettings() {
-    const sSnap = await settingsRef.once('value');
-    const s = sSnap.val() || {};
-    localMediaBase = s.mediaBaseUrl || '/assets/audio/';
-    player.setSettings({ playbackRate: s.playbackRate || 1.0, dingFile: (s.mediaBaseUrl || '/assets/audio/') + 'base/ding.mp3' });
-  }
-
-  // check password: client-side hash compare
+  // sha256 helper
   async function sha256Hex(text) {
     const enc = new TextEncoder();
     const data = enc.encode(text);
@@ -58,114 +48,92 @@
     return h === ph;
   }
 
-  // perform transaction increase/decrease
   async function changeNumber(clinicId, delta) {
     if (!clinicId) return;
-    const cRef = clinicsRef.child(clinicId + '/currentNumber');
-    await cRef.transaction(current => {
-      if (current === null) return 0 + delta;
-      return current + delta;
+    await clinicsRef.child(clinicId + '/currentNumber').transaction(curr => {
+      if (curr === null) return (0 + delta);
+      return curr + delta;
     });
-    // fetch updated number and write lastCall entry
-    const updatedSnap = await clinicsRef.child(clinicId).once('value');
-    const clinicData = updatedSnap.val();
-    // write a global lastCall entry (so displays can listen)
-    const lastCall = {
-      clinicId,
-      number: clinicData.currentNumber || 0,
-      timestamp: Date.now()
-    };
+    const snap = await clinicsRef.child(clinicId).once('value');
+    const c = snap.val() || {};
+    const lastCall = { clinicId, number: c.currentNumber || 0, timestamp: Date.now() };
     await db.ref('lastCall').set(lastCall);
-    status.textContent = `تم تحديث الرقم إلى ${lastCall.number}`;
+    status.textContent = `تم التحديث إلى ${lastCall.number}`;
   }
 
-  // call specific number (set number to input and notify)
   async function setSpecificNumber(clinicId, num) {
     await clinicsRef.child(clinicId + '/currentNumber').set(num);
     const lastCall = { clinicId, number: num, timestamp: Date.now() };
     await db.ref('lastCall').set(lastCall);
+    status.textContent = `تم ضبط الرقم إلى ${num}`;
   }
 
-  // reset queue
   async function resetClinic(clinicId) {
     await clinicsRef.child(clinicId + '/currentNumber').set(0);
     await db.ref('lastCall').set({ clinicId, number: 0, timestamp: Date.now(), reset: true });
+    status.textContent = `تم إعادة التعيين`;
   }
 
-  // UI events
-  nextBtn.addEventListener('click', async () => {
-    const clinicId = clinicSelect.value;
+  nextBtn.addEventListener('click', async ()=> {
+    const cid = clinicSelect.value;
     const pass = clinicPass.value;
-    if (!(await authorize(clinicId, pass))) return alert('كلمة السر غير صحيحة');
-    await changeNumber(clinicId, 1);
+    if (!await authorize(cid, pass)) return alert('كلمة السر خاطئة');
+    await changeNumber(cid, 1);
   });
 
-  prevBtn.addEventListener('click', async () => {
-    const clinicId = clinicSelect.value;
+  prevBtn.addEventListener('click', async ()=> {
+    const cid = clinicSelect.value;
     const pass = clinicPass.value;
-    if (!(await authorize(clinicId, pass))) return alert('كلمة السر غير صحيحة');
-    await changeNumber(clinicId, -1);
+    if (!await authorize(cid, pass)) return alert('كلمة السر خاطئة');
+    await changeNumber(cid, -1);
   });
 
-  repeatBtn.addEventListener('click', async () => {
-    const clinicId = clinicSelect.value;
+  repeatBtn.addEventListener('click', async ()=> {
+    const cid = clinicSelect.value;
     const pass = clinicPass.value;
-    if (!(await authorize(clinicId, pass))) return alert('كلمة السر غير صحيحة');
-    // do not change number, just push lastCall with same number
-    const snap = await clinicsRef.child(clinicId).once('value');
+    if (!await authorize(cid, pass)) return alert('كلمة السر خاطئة');
+    const snap = await clinicsRef.child(cid).once('value');
     const c = snap.val() || {};
     const n = c.currentNumber || 0;
-    await db.ref('lastCall').set({ clinicId, number: n, timestamp: Date.now(), repeat: true });
-    status.textContent = `تم تكرار نداء الرقم ${n}`;
+    await db.ref('lastCall').set({ clinicId: cid, number: n, timestamp: Date.now(), repeat: true });
+    status.textContent = `تم تكرار النداء للرقم ${n}`;
   });
 
-  callSpecificBtn.addEventListener('click', async () => {
-    const clinicId = clinicSelect.value;
+  callSpecificBtn.addEventListener('click', async ()=> {
+    const cid = clinicSelect.value;
     const pass = clinicPass.value;
-    const num = Number(specificNumber.value);
-    if (!(await authorize(clinicId, pass))) return alert('كلمة السر غير صحيحة');
-    if (!num || num < 0) return alert('أدخل رقم صحيح');
-    await setSpecificNumber(clinicId, num);
+    const n = Number(specificNumber.value);
+    if (!await authorize(cid, pass)) return alert('كلمة السر خاطئة');
+    if (!n) return alert('أدخل رقم صحيح');
+    await setSpecificNumber(cid, n);
   });
 
-  resetQueue.addEventListener('click', async () => {
-    const clinicId = clinicSelect.value;
+  resetQueue.addEventListener('click', async ()=> {
+    const cid = clinicSelect.value;
     const pass = clinicPass.value;
-    if (!(await authorize(clinicId, pass))) return alert('كلمة السر غير صحيحة');
-    if (!confirm('هل تريد إعادة تعيين الطابور لهذه العيادة؟')) return;
-    await resetClinic(clinicId);
+    if (!await authorize(cid, pass)) return alert('كلمة السر خاطئة');
+    if (!confirm('إعادة التعيين للعيادة؟')) return;
+    await resetClinic(cid);
   });
 
-  // enable audio (user action to allow autoplay on some devices)
-  enableAudio.addEventListener('click', async () => {
-    // try to play a short silent audio or ding to "unlock"
-    const silent = new Audio(player.settings.dingFile);
+  enableAudio.addEventListener('click', async ()=> {
     try {
-      await silent.play();
-      silent.pause();
-      silent.currentTime = 0;
-      alert('تم تمكين الصوت محليًا على هذا الجهاز');
-    } catch (e) {
-      alert('فشل في تمكين الصوت تلقائيًا. تأكد من إعطاء إذن الصوت.');
+      const a = new Audio('/assets/audio/base/ding.mp3');
+      await a.play();
+      a.pause();
+      a.currentTime = 0;
+      alert('تم تمكين الصوت في هذا المتصفح');
+    } catch(e) {
+      alert('فشل تمكين الصوت — حاول تفاعل المستخدم يدوياً');
     }
   });
 
-  // listen to settings changes
-  settingsRef.on('value', snap => {
-    const s = snap.val() || {};
-    player.setSettings({ playbackRate: s.playbackRate || 1.0, dingFile: (s.mediaBaseUrl || '/assets/audio/') + 'base/ding.mp3' });
-  });
-
-  // show last calls
   db.ref('lastCall').on('value', snap => {
     const v = snap.val();
     if (!v) return;
     const d = new Date(v.timestamp || Date.now());
-    lastCalls.innerHTML = `العيادة: ${v.clinicId} - رقم: ${v.number} - ${d.toLocaleString()}`;
-    // local audible feedback (optional): control does not need to play; display will play
+    lastCallDiv.textContent = `العيادة: ${v.clinicId} - رقم: ${v.number} - ${d.toLocaleString()}`;
   });
 
-  // init
   await loadClinics();
-  await loadSettings();
 })();
