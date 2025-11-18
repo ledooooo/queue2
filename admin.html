@@ -6,23 +6,22 @@
   <title>Admin - نظام طوابير</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase v8 -->
+  <!-- Firebase v8 (compat) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
 </head>
-
 <body class="bg-gray-50 text-gray-800 p-6">
   <div class="max-w-5xl mx-auto">
-
-    <!-- HEADER -->
     <header class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">لوحة الادمن</h1>
-      <button id="signOutBtn" class="hidden px-3 py-1 bg-red-500 text-white rounded">تسجيل خروج</button>
+      <div>
+        <button id="signOutBtn" class="hidden px-3 py-1 bg-red-500 text-white rounded">تسجيل خروج</button>
+      </div>
     </header>
 
-    <!-- AUTH BLOCK -->
+    <!-- Auth block -->
     <div id="authBlock" class="bg-white p-4 rounded shadow max-w-md">
       <h2 class="font-semibold mb-2">تسجيل دخول الادمن</h2>
       <input id="adminEmail" placeholder="البريد الإلكتروني" class="w-full p-2 border rounded mb-2" />
@@ -34,19 +33,16 @@
       <div id="authMsg" class="mt-2 text-sm text-red-600"></div>
     </div>
 
-    <!-- ADMIN UI -->
+    <!-- Admin UI -->
     <div id="adminUI" class="hidden space-y-6 mt-6">
-
-      <!-- SETTINGS -->
+      <!-- Settings -->
       <div class="bg-white p-4 rounded shadow">
         <h2 class="font-semibold mb-3">إعدادات عامة</h2>
-
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm">اسم المركز</label>
             <input id="centerName" class="p-2 border rounded w-full" />
           </div>
-
           <div>
             <label class="block text-sm">وضع الصوت</label>
             <select id="audioMode" class="p-2 border rounded w-full">
@@ -54,162 +50,79 @@
               <option value="tts">TTS (Web Speech)</option>
             </select>
           </div>
-
           <div>
             <label class="block text-sm">سرعة النطق</label>
             <input id="playbackRate" type="number" step="0.1" min="0.5" max="2.0" class="p-2 border rounded w-full" />
           </div>
-
           <div>
             <label class="block text-sm">مدة وميض الكارت (ثواني)</label>
             <input id="flashDuration" type="number" min="1" max="20" class="p-2 border rounded w-full" />
           </div>
-
           <div>
             <label class="block text-sm">عدد تكرار النداء</label>
             <input id="callRepeat" type="number" min="1" max="5" class="p-2 border rounded w-full" />
           </div>
-
           <div>
             <label class="block text-sm">mediaBaseUrl</label>
             <input id="mediaBaseUrl" class="p-2 border rounded w-full" placeholder="/assets/audio/" />
           </div>
         </div>
-
         <div class="mt-3">
           <button id="saveSettings" class="px-4 py-2 bg-green-600 text-white rounded">حفظ الإعدادات</button>
         </div>
       </div>
 
-      <!-- CLINICS -->
+      <!-- Clinics management -->
       <div class="bg-white p-4 rounded shadow">
         <h2 class="font-semibold mb-3">العيادات (حتى 10)</h2>
-
         <div id="clinicsList" class="space-y-2"></div>
 
         <div class="mt-3 grid grid-cols-2 gap-2">
           <input id="newClinicName" placeholder="اسم العيادة" class="p-2 border rounded" />
           <input id="newClinicPass" placeholder="كلمة سر العيادة" type="password" class="p-2 border rounded" />
         </div>
+        <div class="mt-2 flex gap-2">
+          <button id="addClinic" class="px-4 py-2 bg-blue-600 text-white rounded">إضافة عيادة</button>
+          <button id="bulkUploadPrompts" class="px-4 py-2 bg-gray-600 text-white rounded">رفع ملفات نداءات جاهزة</button>
+          <input id="bulkFiles" type="file" accept="audio/*" multiple class="hidden" />
+        </div>
+      </div>
 
-        <button id="addClinic" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded">إضافة عيادة</button>
+      <!-- Test & record -->
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-semibold mb-3">اختبار النطق وتسجيل</h2>
+        <div class="grid grid-cols-3 gap-3 mb-3">
+          <input id="testNumber" type="number" min="1" max="9999" placeholder="رقم للاختبار" class="p-2 border rounded" />
+          <select id="testClinic" class="p-2 border rounded"></select>
+          <input id="testRepeat" type="number" value="1" min="1" max="5" class="p-2 border rounded" />
+        </div>
+        <div class="flex gap-2">
+          <button id="playTest" class="px-4 py-2 bg-indigo-600 text-white rounded">تشغيل اختبار</button>
+          <button id="playTTS" class="px-4 py-2 bg-yellow-400 text-black rounded">تشغيل TTS</button>
+        </div>
+
+        <div class="mt-4">
+          <label class="block text-sm">تسجيل صوتي (حتى 5 ثواني) للنداء الخاص</label>
+          <input id="recName" placeholder="اسم العميل النصي" class="p-2 border rounded w-full mb-2" />
+          <div class="flex gap-2">
+            <button id="startRec" class="px-3 py-1 bg-green-500 text-white rounded">ابدأ تسجيل</button>
+            <button id="stopRec" class="px-3 py-1 bg-gray-300 rounded">إيقاف</button>
+            <button id="saveRec" class="px-3 py-1 bg-blue-600 text-white rounded">حفظ التسجيل</button>
+            <audio id="recPreview" controls class="hidden"></audio>
+          </div>
+        </div>
       </div>
     </div>
 
-    <p class="mt-6 text-xs text-gray-500">
-      بعد رفع الملفات: عدّل <b>firebase-config.js</b> بقيم مشروعك.
-    </p>
-
+    <div class="mt-6 text-xs text-gray-500">
+      <p>بعد رفع الملفات: عدّل js/firebase-config.js بقيم مشروعك. وأنشئ مستخدم ادمن واحد في Firebase Auth أو استخدم زر "إنشاء مستخدم ادمن".</p>
+    </div>
   </div>
 
-  <!-- SCRIPTS -->
+  <!-- Scripts -->
   <script src="js/firebase-config.js"></script>
-
-  <script>
-    // ============ AUTH =============
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        authBlock.classList.add("hidden");
-        adminUI.classList.remove("hidden");
-        signOutBtn.classList.remove("hidden");
-        loadClinics();
-        loadSettings();
-      } else {
-        authBlock.classList.remove("hidden");
-        adminUI.classList.add("hidden");
-        signOutBtn.classList.add("hidden");
-      }
-    });
-
-    signInBtn.onclick = function () {
-      let email = adminEmail.value.trim();
-      let pass = adminPassword.value.trim();
-      firebase.auth().signInWithEmailAndPassword(email, pass)
-        .catch(e => authMsg.innerText = e.message);
-    };
-
-    createAdminBtn.onclick = function () {
-      let email = adminEmail.value.trim();
-      let pass = adminPassword.value.trim();
-      firebase.auth().createUserWithEmailAndPassword(email, pass)
-        .then(() => alert("تم إنشاء مستخدم الادمن"))
-        .catch(e => authMsg.innerText = e.message);
-    };
-
-    signOutBtn.onclick = () => firebase.auth().signOut();
-
-    // ============ CLINICS =============
-    function loadClinics() {
-      firebase.database().ref("clinics").on("value", snap => {
-        clinicsList.innerHTML = "";
-
-        snap.forEach(child => {
-          let c = child.val();
-          let div = document.createElement("div");
-          div.className = "p-2 border rounded flex justify-between items-center";
-
-          div.innerHTML = `
-            <div>
-              <b>${c.name}</b>
-            </div>
-            <button class="px-2 py-1 bg-red-500 text-white rounded"
-                    onclick="deleteClinic('${child.key}')">حذف</button>
-          `;
-
-          clinicsList.appendChild(div);
-        });
-      });
-    }
-
-    function deleteClinic(id) {
-      firebase.database().ref("clinics/" + id).remove();
-    }
-
-    addClinic.onclick = function () {
-      let name = newClinicName.value.trim();
-      let pass = newClinicPass.value.trim();
-
-      if (!name || !pass) {
-        alert("يرجى إدخال اسم العيادة وكلمة المرور");
-        return;
-      }
-
-      let ref = firebase.database().ref("clinics").push();
-      ref.set({
-        name: name,
-        password: pass,
-        current: 0
-      });
-
-      newClinicName.value = "";
-      newClinicPass.value = "";
-    };
-
-    // ============ SETTINGS =============
-    function loadSettings() {
-      firebase.database().ref("settings").on("value", snap => {
-        let s = snap.val() || {};
-        centerName.value = s.centerName || "";
-        audioMode.value = s.audioMode || "mp3";
-        playbackRate.value = s.playbackRate || 1;
-        flashDuration.value = s.flashDuration || 3;
-        callRepeat.value = s.callRepeat || 1;
-        mediaBaseUrl.value = s.mediaBaseUrl || "/assets/audio/";
-      });
-    }
-
-    saveSettings.onclick = function () {
-      firebase.database().ref("settings").set({
-        centerName: centerName.value,
-        audioMode: audioMode.value,
-        playbackRate: Number(playbackRate.value),
-        flashDuration: Number(flashDuration.value),
-        callRepeat: Number(callRepeat.value),
-        mediaBaseUrl: mediaBaseUrl.value
-      });
-
-      alert("تم حفظ الإعدادات");
-    };
-  </script>
+  <script src="js/audioBuilder.js"></script>
+  <script src="js/audioQueue.js"></script>
+  <script src="js/admin.js"></script>
 </body>
 </html>
