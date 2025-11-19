@@ -132,19 +132,6 @@ if (signOutBtn) {
 
 
 // ======= Load & Save Settings =======
-
-// Function to check for missing audio files
-function checkAudioAssets(mediaBaseUrlValue) {
-  const audioErrorDiv = document.getElementById('audioError');
-  
-  // A simple check: if the user is on the default GitHub Pages URL and hasn't changed the mediaBaseUrl, the files are likely missing.
-  // We will check if the value is the default scaffold value.
-  if (mediaBaseUrlValue === '/assets/audio/') {
-    audioErrorDiv.classList.remove('hidden');
-  } else {
-    audioErrorDiv.classList.add('hidden');
-  }
-}
 async function loadSettings() {
   try {
     const snap = await db.ref('settings').once('value');
@@ -156,7 +143,6 @@ async function loadSettings() {
     if (callRepeat) callRepeat.value = s.callRepeatCount || 1;
     if (mediaBaseUrl) mediaBaseUrl.value = s.mediaBaseUrl || '/assets/audio/';
     // also populate testClinic after clinics load (loadClinics sets options)
-    checkAudioAssets(s.mediaBaseUrl || '/assets/audio/'); // Check after loading
   } catch (e) {
     console.error("loadSettings error", e);
   }
@@ -175,7 +161,6 @@ if (saveSettings) {
       };
       await db.ref('settings').set(s);
       alert('تم حفظ الإعدادات');
-      checkAudioAssets(s.mediaBaseUrl); // Re-check after saving
     } catch (e) {
       console.error("saveSettings error", e);
       alert('فشل حفظ الإعدادات');
