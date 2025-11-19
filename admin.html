@@ -1,128 +1,186 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin - نظام طوابير</title>
+  <meta charset="UTF-8">
+  <title>صفحة المدير - مركز غرب المطار</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase v8 (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Tajawal', sans-serif; background: #d0e6f2; }
+    .card { background: #ffffff; border-radius: 1rem; box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+    .highlight { background: #fef3c7 !important; animation: blink 0.6s ease-in-out 4; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;}}
+  </style>
 </head>
-<body class="bg-gray-50 text-gray-800 p-6">
-  <div class="max-w-5xl mx-auto">
-    <header class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">لوحة الادمن</h1>
-      <div>
-        <button id="signOutBtn" class="hidden px-3 py-1 bg-red-500 text-white rounded">تسجيل خروج</button>
-      </div>
-    </header>
+<body class="min-h-screen p-6">
 
-    <!-- Auth block -->
-    <div id="authBlock" class="bg-white p-4 rounded shadow max-w-md">
-      <h2 class="font-semibold mb-2">تسجيل دخول الادمن</h2>
-      <input id="adminEmail" placeholder="البريد الإلكتروني" class="w-full p-2 border rounded mb-2" />
-      <input id="adminPassword" placeholder="كلمة المرور" type="password" class="w-full p-2 border rounded mb-3" />
-      <div class="flex gap-2">
-        <button id="signInBtn" class="px-4 py-2 bg-blue-600 text-white rounded">دخول</button>
-        <button id="createAdminBtn" class="px-4 py-2 bg-gray-300 rounded">إنشاء مستخدم ادمن</button>
-      </div>
-      <div id="authMsg" class="mt-2 text-sm text-red-600"></div>
-    </div>
-
-    <!-- Admin UI -->
-    <div id="adminUI" class="hidden space-y-6 mt-6">
-      <!-- Settings -->
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-3">إعدادات عامة</h2>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm">اسم المركز</label>
-            <input id="centerName" class="p-2 border rounded w-full" />
-          </div>
-          <div>
-            <label class="block text-sm">وضع الصوت</label>
-            <select id="audioMode" class="p-2 border rounded w-full">
-              <option value="mp3">MP3</option>
-              <option value="tts">TTS (Web Speech)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm">سرعة النطق</label>
-            <input id="playbackRate" type="number" step="0.1" min="0.5" max="2.0" class="p-2 border rounded w-full" />
-          </div>
-          <div>
-            <label class="block text-sm">مدة وميض الكارت (ثواني)</label>
-            <input id="flashDuration" type="number" min="1" max="20" class="p-2 border rounded w-full" />
-          </div>
-          <div>
-            <label class="block text-sm">عدد تكرار النداء</label>
-            <input id="callRepeat" type="number" min="1" max="5" class="p-2 border rounded w-full" />
-          </div>
-          <div>
-            <label class="block text-sm">mediaBaseUrl</label>
-            <input id="mediaBaseUrl" class="p-2 border rounded w-full" placeholder="/assets/audio/" />
-          </div>
-        </div>
-        <div class="mt-3">
-          <button id="saveSettings" class="px-4 py-2 bg-green-600 text-white rounded">حفظ الإعدادات</button>
-        </div>
-      </div>
-
-      <!-- Clinics management -->
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-3">العيادات (حتى 10)</h2>
-        <div id="clinicsList" class="space-y-2"></div>
-
-        <div class="mt-3 grid grid-cols-2 gap-2">
-          <input id="newClinicName" placeholder="اسم العيادة" class="p-2 border rounded" />
-          <input id="newClinicPass" placeholder="كلمة سر العيادة" type="password" class="p-2 border rounded" />
-        </div>
-        <div class="mt-2 flex gap-2">
-          <button id="addClinic" class="px-4 py-2 bg-blue-600 text-white rounded">إضافة عيادة</button>
-          <button id="bulkUploadPrompts" class="px-4 py-2 bg-gray-600 text-white rounded">رفع ملفات نداءات جاهزة</button>
-          <input id="bulkFiles" type="file" accept="audio/*" multiple class="hidden" />
-        </div>
-      </div>
-
-      <!-- Test & record -->
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="font-semibold mb-3">اختبار النطق وتسجيل</h2>
-        <div class="grid grid-cols-3 gap-3 mb-3">
-          <input id="testNumber" type="number" min="1" max="9999" placeholder="رقم للاختبار" class="p-2 border rounded" />
-          <select id="testClinic" class="p-2 border rounded"></select>
-          <input id="testRepeat" type="number" value="1" min="1" max="5" class="p-2 border rounded" />
-        </div>
-        <div class="flex gap-2">
-          <button id="playTest" class="px-4 py-2 bg-indigo-600 text-white rounded">تشغيل اختبار</button>
-          <button id="playTTS" class="px-4 py-2 bg-yellow-400 text-black rounded">تشغيل TTS</button>
-        </div>
-
-        <div class="mt-4">
-          <label class="block text-sm">تسجيل صوتي (حتى 5 ثواني) للنداء الخاص</label>
-          <input id="recName" placeholder="اسم العميل النصي" class="p-2 border rounded w-full mb-2" />
-          <div class="flex gap-2">
-            <button id="startRec" class="px-3 py-1 bg-green-500 text-white rounded">ابدأ تسجيل</button>
-            <button id="stopRec" class="px-3 py-1 bg-gray-300 rounded">إيقاف</button>
-            <button id="saveRec" class="px-3 py-1 bg-blue-600 text-white rounded">حفظ التسجيل</button>
-            <audio id="recPreview" controls class="hidden"></audio>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="mt-6 text-xs text-gray-500">
-      <p>بعد رفع الملفات: عدّل js/firebase-config.js بقيم مشروعك. وأنشئ مستخدم ادمن واحد في Firebase Auth أو استخدم زر "إنشاء مستخدم ادمن".</p>
-    </div>
+  <!-- ================== قسم الدخول (يختفي بعد التحقق) ================== -->
+  <div id="loginSection" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl">
+    <h1 class="text-3xl font-bold text-center text-[#004156] mb-6">صفحة المدير</h1>
+    <input id="adminPassword" type="password" placeholder="كلمة مرور الصفحة" class="w-full p-3 border rounded-lg text-lg mb-4">
+    <button id="loginBtn" class="w-full py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800">دخول</button>
+    <p id="loginError" class="text-sm text-red-600 text-center mt-2 hidden">كلمة المرور خاطئة</p>
   </div>
 
-  <!-- Scripts -->
-  <script src="js/firebase-config.js"></script>
-  <script src="js/audioBuilder.js"></script>
-  <script src="js/audioQueue.js"></script>
-  <script src="js/admin.js"></script>
+  <!-- ================== المحتوى الرئيسى (يُخفى حتى يدخل المدير) ================== -->
+  <div id="mainContent" class="hidden space-y-8">
+
+    <!-- عنوان الصفحة -->
+    <h1 class="text-4xl font-extrabold text-center text-[#004156]">مركز غرب المطار - لوحة المدير</h1>
+
+    <!-- قسم إضافة/تعديل عيادة -->
+    <div class="max-w-4xl mx-auto card p-6 space-y-4">
+      <h2 class="text-2xl font-bold text-[#004156]">إضافة / تعديل عيادة</h2>
+      <input id="newClinicName" type="text" placeholder="اسم العيادة" class="w-full p-3 border rounded-lg text-lg">
+      <input id="newClinicPassword" type="password" placeholder="كلمة مرور العيادة" class="w-full p-3 border rounded-lg text-lg">
+      <div class="flex gap-3">
+        <button id="addClinicBtn" class="flex-1 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800">أضف</button>
+        <button id="saveClinicBtn" class="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 hidden">حفظ التعديل</button>
+      </div>
+      <p id="clinicMsg" class="text-sm text-gray-600 text-center"></p>
+    </div>
+
+    <!-- زر إعادة تعيين جميع العيادات -->
+    <div class="max-w-4xl mx-auto text-center">
+      <button id="resetAllBtn" class="py-3 px-6 bg-red-600 text-white rounded-lg hover:bg-red-700">إعادة تعيين جميع العيادات</button>
+    </div>
+
+    <!-- قائمة العيادات مع التحكم فى الأرقام -->
+    <div class="max-w-4xl mx-auto card p-6 space-y-4">
+      <h2 class="text-2xl font-bold text-[#004156]">العيادات الحالية</h2>
+      <ul id="clinicsList" class="space-y-4"></ul>
+    </div>
+
+    <!-- عنصر تحكم السرعة -->
+    <div id="adminSpeed" class="max-w-4xl mx-auto"></div>
+
+  </div>
+
+  <script type="module">
+    import { db, ref, get, set, update, remove, onValue, push } from "./js/firebase-config.js";
+    import { buildSpeedControl } from "./js/tts.js";
+
+    /* ================== متغيرات الصفحة ================== */
+    const loginSection   = document.getElementById('loginSection');
+    const mainContent    = document.getElementById('mainContent');
+    const adminPassword  = document.getElementById('adminPassword');
+    const loginBtn       = document.getElementById('loginBtn');
+    const loginError     = document.getElementById('loginError');
+
+    const newClinicName     = document.getElementById('newClinicName');
+    const newClinicPassword = document.getElementById('newClinicPassword');
+    const addClinicBtn      = document.getElementById('addClinicBtn');
+    const clinicsList       = document.getElementById('clinicsList');
+    const resetAllBtn       = document.getElementById('resetAllBtn');
+
+    const ADMIN_PASS = 'admin123'; // غيّرها لكلمة مرور الصفحة الخاصة بك
+
+    /* ================== دخول المدير ================== */
+    loginBtn.addEventListener('click', () => {
+      if (adminPassword.value.trim() === ADMIN_PASS) {
+        loginSection.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        buildSpeedControl();
+        renderClinics();
+      } else {
+        loginError.classList.remove('hidden');
+      }
+    });
+
+    /* ================== إضافة عيادة جديدة ================== */
+    addClinicBtn.addEventListener('click', async () => {
+      const name = newClinicName.value.trim();
+      const pass = newClinicPassword.value.trim();
+      if (!name || !pass) { alert('أكمل الحقول أولاً'); return; }
+
+      const r = push(ref(db, 'clinics'));
+      await set(r, { name: name, password: pass, currentNumber: 0 });
+      newClinicName.value = '';
+      newClinicPassword.value = '';
+      renderClinics();
+    });
+
+    /* ================== عرض العيادات مع حقول التعديل و التحكم ================== */
+    async function renderClinics() {
+      const snap = await get(ref(db, 'clinics'));
+      clinicsList.innerHTML = '';
+      if (!snap.exists()) { clinicsList.innerHTML = '<li class="text-gray-500">لا توجد عيادات</li>'; return; }
+
+      snap.forEach(ch => {
+        const {name, password, currentNumber} = ch.val();
+        const id = ch.key;
+
+        clinicsList.insertAdjacentHTML('beforeend', `
+          <li class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gray-50 p-4 rounded-xl">
+            <!-- اسم العيادة + حقول التعديل -->
+            <div class="flex-1 space-y-2">
+              <input type="text" value="${name}" id="name-${id}" class="w-full p-2 border rounded text-lg font-bold text-[#2a3e48]">
+              <input type="text" value="${password}" id="pass-${id}" class="w-full p-2 border rounded text-sm" placeholder="كلمة المرور">
+              <div class="flex gap-2">
+                <button onclick="updateClinic('${id}')" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">حفظ التعديل</button>
+                <button onclick="deleteClinic('${id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">حذف</button>
+              </div>
+            </div>
+
+            <!-- التحكم فى الرقم -->
+            <div class="flex items-center gap-3">
+              <span class="text-2xl font-extrabold text-[#004156]">${currentNumber}</span>
+              <button onclick="setSpecificNumber('${id}', ${currentNumber})" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">ضبط رقم</button>
+              <button onclick="resetClinic('${id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">إعادة تعيين</button>
+            </div>
+          </li>`);
+      });
+    }
+
+    /* ================== وظائف التحكم ================== */
+    window.updateClinic = async (id) => {
+      const newName = document.getElementById(`name-${id}`).value.trim();
+      const newPass = document.getElementById(`pass-${id}`).value.trim();
+      if (!newName || !newPass) { alert('أكمل الحقول أولاً'); return; }
+      await update(ref(db, `clinics/${id}`), { name: newName, password: newPass });
+      renderClinics();
+    };
+
+    window.deleteClinic = async (id) => {
+      if (!confirm('متأكد من حذف العيادة؟')) return;
+      await remove(ref(db, `clinics/${id}`));
+      renderClinics();
+    };
+
+    window.setSpecificNumber = async (id, oldNumber) => {
+      const newNumber = prompt(`ضع رقمًا جديدًا (الحالي: ${oldNumber})`, oldNumber);
+      if (newNumber === null) return;
+      const n = parseInt(newNumber, 10);
+      if (isNaN(n) || n < 0) { alert('رقم غير صحيح'); return; }
+      await update(ref(db, `clinics/${id}`), { currentNumber: n });
+      renderClinics();
+    };
+
+    window.resetClinic = async (id) => {
+      if (!confirm('متأكد من إعادة تعيين الرقم؟')) return;
+      await update(ref(db, `clinics/${id}`), { currentNumber: 0 });
+      // تنطيق "تمت إعادة التعيين" من ملف reset.mp3
+      const audio = new Audio('audio/reset.mp3');
+      audio.play().catch(() => {});
+      renderClinics();
+    };
+
+    /* ================== إعادة تعيين جميع العيادات مرة واحدة ================== */
+    resetAllBtn.addEventListener('click', async () => {
+      if (!confirm('متأكد من إعادة تعيين جميع الأرقام إلى صفر؟')) return;
+      const snap = await get(ref(db, 'clinics'));
+      // ✅ استخدم forEach مباشرة على الـ Snap لضمان تنفيذ جميع التحديثات
+      snap.forEach(async ch => {
+        await update(ref(db, `clinics/${ch.key}`), { currentNumber: 0 });
+      });
+      // تنطيق "تمت إعادة التعيين" من ملف reset.mp3
+      const audio = new Audio('audio/reset.mp3');
+      audio.play().catch(() => {});
+      renderClinics();
+    });
+
+    /* ================== أول تحميل ================== */
+    renderClinics();
+  </script>
 </body>
 </html>
