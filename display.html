@@ -1,48 +1,203 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Display - شاشة العرض</title>
+  <meta charset="UTF-8">
+  <title>شاشة طابور العيادات</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Tajawal', sans-serif; background: #d0e6f2; }
+    #mainGrid { height: 100vh; }
+    .leftCol  { width: 25%; }
+    .rightCol { width: 75%; }
+    .clinicCard { background: #ffffff; border-radius: 1rem; box-shadow: 0 8px 20px rgba(0,0,0,.08); transition: background 0.4s; }
+    .clinicNum  { font-size: 4rem; line-height: 1; color: #004156; }
+    @media (min-width:1024px){ .clinicNum { font-size: 5rem; } }
+    .highlight { background: #fef3c7 !important; animation: blink 0.6s ease-in-out 4; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;}}
+    /* قسم عرض الجملة + التواقيت */
+    #phraseBox { background: #e0f2fe; border-bottom: 4px solid #0288d1; min-height: 20%; }
+    #phraseText { font-size: 2.5rem; line-height: 1.2; color: #01579b; word-break: break-word; }
+    #dateTime   { font-size: 1.1rem; color: #0288d1; }
+    #alertTime  { font-size: 1rem;  color: #c62828; }
+    /* منطقة الفيديو/الصور المتسلسلة */
+    #videoBox  { background: #000; flex: 1; }
+  </style>
 </head>
-<body class="bg-black text-white h-screen overflow-hidden">
-  <div class="h-full grid grid-cols-4 gap-4 p-4">
-    <div class="col-span-1 bg-gray-900 p-3 rounded overflow-auto">
-      <h2 class="text-lg font-semibold mb-3">العيادات</h2>
-      <div id="clinicsCards" class="space-y-2"></div>
-    </div>
+<body class="overflow-hidden">
 
-    <div class="col-span-3 bg-gray-800 p-3 rounded flex flex-col">
-      <div class="flex items-center justify-between mb-2">
-        <div>
-          <div id="announcementText" class="text-4xl font-bold">أهلاً بكم</div>
-          <div id="announcementMeta" class="text-sm text-gray-300 mt-1"></div>
-        </div>
-        <div class="text-right">
-          <div id="clock" class="text-sm"></div>
-        </div>
+  <div id="mainGrid" class="flex w-full h-full">
+
+    <!-- يسار: العيادات (25%) -->
+    <section class="leftCol p-4 overflow-y-auto flex flex-col gap-4" id="clinicsPanel">
+      <h1 class="text-3xl lg:text-4xl font-extrabold text-center text-[#004156] mb-4">الرقم الحالي</h1>
+      <div id="cards" class="flex flex-col gap-4"></div>
+      <!-- تحكم سرعة النطق -->
+      <div class="mt-auto bg-white p-3 rounded-xl shadow flex items-center gap-3">
+        <label class="text-sm font-bold text-[#004156]">سرعة النطق:</label>
+        <input id="speedRange" type="range" min="0.5" max="2" step="0.1" value="1" class="flex-1">
+        <span id="speedVal" class="text-sm w-10 text-center">1</span>
+      </div>
+    </section>
+
+    <!-- يمين: أعلى 20% عرض الجملة + التواقيت + أسفل 80% مشغل متسلسل -->
+    <section class="rightCol flex flex-col">
+      <!-- أعلى: عرض الجملة + التواقيت -->
+      <div id="phraseBox" class="w-full p-6 flex flex-col items-center justify-center text-center gap-2">
+        <!-- اسم المكان + تاريخ اليوم + الساعة الحية -->
+        <div id="dateTime" class="font-semibold">جار التحميل...</div>
+        <!-- الجملة المنطوقة -->
+        <p id="phraseText" class="font-extrabold text-2xl lg:text-3xl">-- اضغط على أى زر لظهور الجملة --</p>
+        <!-- توقيت التنبيه (يُحدث مع كل تنبيه) -->
+        <div id="alertTime" class="font-semibold"></div>
       </div>
 
-      <div id="mediaArea" class="flex-1 bg-black/40 rounded flex items-center justify-center overflow-hidden">
-        <video id="mediaVideo" class="max-h-full max-w-full hidden" controls muted loop></video>
-        <img id="mediaImage" class="max-h-full max-w-full object-contain hidden" />
+      <!-- أسفل: مشغل متسلسل (فيديو + صور) -->
+      <div id="videoBox" class="w-full flex-1 bg-black relative">
+        <video id="seqPlayer" class="w-full h-full object-cover" controls muted autoplay></video>
+        <img id="seqImage" class="w-full h-full object-cover hidden" alt="slide">
       </div>
+    </section>
 
-      <div class="mt-3">
-        <div id="newsTicker" class="bg-gray-900 p-2 rounded">
-          <marquee id="tickerContent">شريط الأخبار سيعرض هنا — عدّل النص من لوحة الادمن</marquee>
-        </div>
-      </div>
-    </div>
   </div>
 
-  <script src="js/firebase-config.js"></script>
-  <script src="js/audioBuilder.js"></script>
-  <script src="js/audioQueue.js"></script>
-  <script src="js/display.js"></script>
+  <script type="module">
+    import { db, ref, onValue } from "./js/firebase-config.js";
+    import { announce } from "./js/tts.js";
+
+    /* ---------- تحكم سرعة النطق ---------- */
+    const speedKey = 'ttsSpeed';
+    const speedRange = document.getElementById('speedRange');
+    const speedVal   = document.getElementById('speedVal');
+    const savedSpeed = localStorage.getItem(speedKey) || '1';
+    speedRange.value = savedSpeed;
+    speedVal.textContent = savedSpeed;
+    speedRange.addEventListener('input', e => {
+      const v = e.target.value;
+      localStorage.setItem(speedKey, v);
+      speedVal.textContent = v;
+    });
+
+    /* ---------- عرض العيادات + تمييز الكارت + عرض الجملة + النطق ---------- */
+    const container   = document.getElementById('cards');
+    const phraseText  = document.getElementById('phraseText');
+    const alertTime   = document.getElementById('alertTime');
+    let lastNumbers   = {};
+
+    onValue(ref(db, 'clinics'), snap => {
+      const data = snap.val() || {};
+      const currentIds = Object.keys(data);
+
+      currentIds.forEach(id => {
+        const { name, currentNumber } = data[id];
+        let card = document.getElementById('card-' + id);
+
+        if (card) {
+          card.querySelector('.clinicNum').textContent = currentNumber;
+        } else {
+          container.insertAdjacentHTML('beforeend', `
+            <div id="card-${id}" class="clinicCard p-4 flex items-center justify-between">
+              <h2 class="text-lg lg:text-xl font-bold text-[#2a3e48]">${name}</h2>
+              <p class="clinicNum font-extrabold">${currentNumber}</p>
+            </div>`);
+          card = document.getElementById('card-' + id);
+        }
+
+        if (lastNumbers[id] !== undefined && lastNumbers[id] !== currentNumber) {
+          card.classList.add('highlight');
+          setTimeout(() => card.classList.remove('highlight'), 3000);
+          const sentence = `على العميل رقم ${currentNumber} التوجه إلى عيادة ${name}`;
+          phraseText.textContent = sentence;
+          // عرض توقيت التنبيث (ساعة:دقيقة:ثانية)
+          const now = new Date();
+          alertTime.textContent = `التنبيه: ${now.toLocaleTimeString('ar-EG')}`;
+          announce(name, currentNumber);
+        }
+        lastNumbers[id] = currentNumber;
+      });
+
+      Object.keys(lastNumbers).forEach(id => {
+        if (!currentIds.includes(id)) {
+          document.getElementById('card-' + id)?.remove();
+          delete lastNumbers[id];
+        }
+      });
+    });
+
+    /* ---------- استماع لمسار currentClient (نص أو صوت) ---------- */
+    onValue(ref(db, 'currentClient'), snap => {
+      if (!snap.exists()) return;
+      const val = snap.val();
+      if (val.name && val.clinic) {
+        const sentence = `على العميل ${val.name} التوجه إلى عيادة ${val.clinic}`;
+        phraseText.textContent = sentence;
+        // توقيت التنبيث
+        const now = new Date();
+        alertTime.textContent = `التنبيه: ${now.toLocaleTimeString('ar-EG')}`;
+        announce(val.clinic, 1);
+      } else if (val.audioURL) {
+        phraseText.textContent = 'جاري تشغيل التسجيل...';
+        const audio = new Audio(val.audioURL);
+        audio.play().catch(() => {});
+        audio.onended = () => phraseText.textContent = '-- جاهز --';
+      }
+    });
+
+    /* ---------- مشغل متسلسل (فيديو + صور) من مجلد media/ على GitHub ---------- */
+    const mediaBase = 'https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/media/'; // غيّرها لرابطك
+    // أو لو على نفس السيرفر: const mediaBase = './media/';
+
+    const playlist = [
+      '1.mp4', '2.jpg', '3.mp4', '4.png' // اكتب أسماء ملفاتك بالترتيب هنا
+    ];
+
+    let current = 0;
+    const player = document.getElementById('seqPlayer');
+    const image  = document.getElementById('seqImage');
+
+    // دالة الانتقال للملف التالي
+    function playNext() {
+      current = (current + 1) % playlist.length;
+      loadMedia();
+    }
+
+    // دالة تحميل وتشغيل الوسائط
+    function loadMedia() {
+      const src = mediaBase + playlist[current];
+      const isVideo = /\.(mp4|webm|ogg)$/i.test(playlist[current]);
+
+      if (isVideo) {
+        // إخفاء الصورة وإظهار الفيديو
+        image.classList.add('hidden');
+        player.classList.remove('hidden');
+        player.src = src;
+        player.play().catch(() => {});
+      } else {
+        // إخفاء الفيديو وإظهار الصورة
+        player.classList.add('hidden');
+        image.classList.remove('hidden');
+        image.src = src;
+        // بعد 4 ثوانٍ انتقل للتالي (غيّر المدة حسب رغبتك)
+        setTimeout(playNext, 4000);
+      }
+    }
+
+    // عند انتهاء الفيديو أو فشل التحميل انتقل للتالي
+    player.addEventListener('ended', playNext);
+    player.addEventListener('error', playNext);
+
+    // بداية التشغيل التلقائى
+    loadMedia();
+
+    /* ---------- عرض اسم المكان + تاريخ اليوم + الساعة الحية ---------- */
+    function updateDateTime() {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString('ar-EG');
+      document.getElementById('dateTime').textContent = `مركز غرب المطار - ${dateStr} - ${timeStr}`;
+    }
+    updateDateTime(); // أول تحديث
+    setInterval(updateDateTime, 1000); // تحديث كل ثانية
+  </script>
 </body>
 </html>
